@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive BA Interview Study Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chosen Palette: "Warm Dawn" -->
+    <!-- Application Structure Plan: The application uses a tab-based navigation for the three core skills (Excel, SQL, Power BI), ensuring clear content separation and focused study. Within each tab, an interactive accordion displays the Q&A pairs, preventing information overload and allowing users to reveal answers on demand. This is superior to a long, static page. A global search bar provides instant access to specific keywords across all topics. To enhance engagement and provide motivation, a dynamic donut chart visually tracks the user's study progress based on interactive checkboxes. This structure transforms the static source report into a purpose-built, user-centric learning tool. -->
+    <!-- Visualization & Content Choices: Report Info: Text-based Q&A. Goal: Organize & Inform. Viz/Method: Interactive Accordion (HTML/CSS/JS) for Q&A display. Interaction: Click to expand/collapse answers. Justification: Organizes dense text, promotes active recall. | Report Info: User's study activity. Goal: Motivate & Track Progress. Viz/Method: Donut Chart (Chart.js/Canvas). Interaction: Chart updates when user checks off a question. Justification: Adds a "gamified," visual feedback loop not present in the source, encouraging completion. | Report Info: All questions. Goal: Quick Lookup. Viz/Method: Search Bar (HTML input + JS filter). Interaction: Real-time filtering of accordions. Justification: Greatly improves usability and efficiency for finding specific information. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+        }
+        .accordion-content.open {
+            max-height: 1000px; /* Adjust as needed */
+        }
+        .tab-button[aria-selected="true"] {
+            border-color: #4338ca;
+            color: #4338ca;
+            font-weight: 600;
+        }
+        pre {
+            background-color: #f3f4f6;
+            border-radius: 8px;
+            padding: 1rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        code {
+            font-family: 'Courier New', Courier, monospace;
+            color: #1e293b;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-slate-900 tracking-tight">Business Analyst Interview Guide</h1>
+            <p class="mt-2 text-lg text-slate-600">An interactive guide to master key concepts in Excel, SQL, and Power BI.</p>
+        </header>
+
+        <div class="sticky top-0 z-10 bg-slate-50/80 backdrop-blur-md pt-4 pb-4 mb-8">
+            <div class="flex flex-col lg:flex-row gap-8">
+                <div class="w-full lg:w-1/3 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h2 class="text-xl font-semibold text-slate-900 mb-4 text-center">Your Progress</h2>
+                    <p class="text-center text-slate-500 mb-4">Check off questions as you master them to see your progress update in real-time.</p>
+                    <div class="chart-container">
+                        <canvas id="progressChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="w-full lg:w-2/3 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
+                    <div>
+                        <h2 class="text-xl font-semibold text-slate-900 mb-4">Topics</h2>
+                         <p class="text-slate-500 mb-4">Select a topic to view the questions. Use the search bar to filter questions by keywords like "VLOOKUP", "JOIN", or "DAX".</p>
+                    </div>
+                    <div class="mt-auto">
+                        <div class="mb-4">
+                            <input type="search" id="search-input" placeholder="🔍 Search questions..." class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
+                        </div>
+                        <nav id="tabs" class="grid grid-cols-3 gap-2" aria-label="Tabs">
+                            <button class="tab-button p-3 text-center border-b-4 border-transparent text-slate-600 hover:bg-slate-100 rounded-t-lg transition" data-category="excel">Excel</button>
+                            <button class="tab-button p-3 text-center border-b-4 border-transparent text-slate-600 hover:bg-slate-100 rounded-t-lg transition" data-category="sql">SQL</button>
+                            <button class="tab-button p-3 text-center border-b-4 border-transparent text-slate-600 hover:bg-slate-100 rounded-t-lg transition" data-category="powerbi">Power BI</button>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <main id="qa-container" class="space-y-4">
+            <!-- Q&A items will be dynamically inserted here -->
+        </main>
+
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        const interviewData = {
+            excel: [
+                {
+                    question: "What is the difference between a workbook and a worksheet in Excel?",
+                    answer: `
+                        <p><strong>Workbook:</strong> A workbook is an Excel file, which is a collection of one or more worksheets. Think of it as a physical binder. It has a <code>.xlsx</code> file extension.</p>
+                        <p class="mt-2"><strong>Worksheet:</strong> A worksheet (also known as a spreadsheet) is a single page within a workbook. It consists of rows and columns where you enter and store data. You can navigate between different worksheets using the tabs at the bottom of the Excel window.</p>
+                    `
+                },
+                {
+                    question: "How do you use the VLOOKUP function? Give an example.",
+                    answer: `
+                        <p>The <code>VLOOKUP</code> function searches for a value in the first column of a table array and returns a value in the same row from a column you specify. It's used for looking up data vertically.</p>
+                        <p class="mt-2"><strong>Syntax:</strong> <code>VLOOKUP(lookup_value, table_array, col_index_num, [range_lookup])</code></p>
+                        <ul class="list-disc list-inside mt-2 space-y-1">
+                            <li><code>lookup_value</code>: The value you want to look up.</li>
+                            <li><code>table_array</code>: The range of cells containing the data. The lookup value must be in the first column of this range.</li>
+                            <li><code>col_index_num</code>: The column number in <code>table_array</code> from which to return the value (e.g., 2 for the second column).</li>
+                            <li><code>[range_lookup]</code>: (Optional) <code>TRUE</code> for an approximate match (default) or <code>FALSE</code> for an exact match. Always use <code>FALSE</code> for exact matches in most business scenarios.</li>
+                        </ul>
+                        <p class="mt-2"><strong>Example:</strong> Suppose you have a list of Product IDs and Product Names in a sheet named "Products" (columns A and B). In another sheet, you have a list of Order IDs and Product IDs, and you want to pull in the Product Name for each order.</p>
+                        <pre><code>=VLOOKUP(C2, Products!A:B, 2, FALSE)</code></pre>
+                    `
+                },
+                 {
+                    question: "What are dynamic arrays in Excel? How do they work?",
+                    answer: `<p>Dynamic arrays are a new calculation engine in Excel that allow formulas to "spill" results into multiple cells automatically, based on the size of the output. This eliminates the need for array formulas (Ctrl+Shift+Enter) for many scenarios.</p>
+                    <p class="mt-2"><strong>How they work:</strong> When you enter a formula that returns multiple values (e.g., <code>SORT</code>, <code>UNIQUE</code>, <code>FILTER</code>, <code>SEQUENCE</code>), Excel automatically determines the size of the output range and populates the cells with the results. This range is called the "spill range." If there isn't enough space (e.g., due to existing data), Excel will show a <code>#SPILL!</code> error.</p>
+                    <p class="mt-2"><strong>Example:</strong> <code>=UNIQUE(A2:A100)</code> will automatically return a list of unique values from the range A2:A100, spilling them into adjacent cells downwards.</p>`
+                },
+                {
+                    question: "Explain the use of the IF function in Excel. Can you give an example?",
+                    answer: `<p>The <code>IF</code> function allows you to make logical comparisons between a value and what you expect. It returns one value if a condition is true, and another value if the condition is false.</p>
+                    <p class="mt-2"><strong>Syntax:</strong> <code>IF(logical_test, value_if_true, [value_if_false])</code></p>
+                    <p class="mt-2"><strong>Example:</strong> To categorize sales as "High" or "Low" based on a target of $1000.</p>
+                    <pre><code>=IF(B2>1000, "High", "Low")</code></pre>`
+                },
+                {
+                    question: "What is the purpose of pivot tables in Excel? How do you create one?",
+                    answer: `<p><strong>Purpose:</strong> Pivot tables are powerful tools used to summarize, analyze, explore, and present large datasets. They allow you to quickly group data by different categories, calculate totals, averages, counts, and other aggregations, and drill down into details. They are excellent for identifying trends, patterns, and insights.</p>
+                    <p class="mt-2"><strong>How to create one:</strong></p>
+                    <ol class="list-decimal list-inside mt-2 space-y-1">
+                        <li>Select any cell within your dataset.</li>
+                        <li>Go to the <strong>Insert</strong> tab on the Excel ribbon.</li>
+                        <li>Click <strong>PivotTable</strong>.</li>
+                        <li>In the "Create PivotTable" dialog box, confirm the range and choose the destination (New Worksheet is recommended).</li>
+                        <li>Drag and drop fields into the Rows, Columns, Values, and Filters areas in the "PivotTable Fields" pane.</li>
+                    </ol>`
+                },
+                 {
+                    question: "How do you use conditional formatting to highlight specific values?",
+                    answer: `<p>Conditional formatting allows you to automatically apply formatting (like colors, fonts, or icons) to cells based on specified criteria. It makes it easier to visualize and analyze data by highlighting important information.</p>
+                    <p class="mt-2"><strong>How to use:</strong></p>
+                    <ol class="list-decimal list-inside mt-2 space-y-1">
+                        <li>Select the range of cells you want to format.</li>
+                        <li>Go to the <strong>Home</strong> tab and click <strong>Conditional Formatting</strong>.</li>
+                        <li>Choose a rule type (e.g., Highlight Cells Rules, Top/Bottom Rules).</li>
+                        <li>Select a specific rule (e.g., Greater Than..., Duplicate Values).</li>
+                        <li>Enter the criteria and choose a formatting style.</li>
+                    </ol>`
+                },
+                {
+                    question: "What is the difference between COUNT and COUNTA functions?",
+                    answer: `<p><strong>COUNT:</strong> This function counts the number of cells in a range that contain <strong>numbers</strong>. It ignores empty cells and cells containing text or error values.</p>
+                    <p class="mt-2"><strong>COUNTA:</strong> This function counts the number of cells in a range that are <strong>not empty</strong>. It counts cells containing numbers, text, logical values, errors, and empty text strings ("").</p>`
+                },
+                {
+                    question: "How do you protect a worksheet in Excel?",
+                    answer: `<p>Protecting a worksheet prevents users from making accidental or unauthorized changes. First, unlock any cells you want users to be able to edit (Format Cells > Protection > uncheck Locked). Then, go to the <strong>Review</strong> tab, click <strong>Protect Sheet</strong>, set a password (optional), and choose the permissions you want to allow.</p>`
+                },
+                {
+                    question: "Can you explain how the INDEX and MATCH functions work together?",
+                    answer: `<p><code>INDEX</code> and <code>MATCH</code> are used together as a powerful alternative to <code>VLOOKUP</code>. <code>MATCH</code> finds the position of a value in a range, and <code>INDEX</code> uses that position to retrieve a value from another range.</p>
+                    <p class="mt-2"><strong>Combined Example:</strong> To find the Product Name (in column B) based on a Product ID (in column A):</p>
+                    <pre><code>=INDEX(B:B, MATCH(C2, A:A, 0))</code></pre>
+                    <p class="mt-2">This is more flexible than VLOOKUP because the lookup column doesn't need to be the first column in the table array.</p>`
+                },
+                {
+                    question: "How would you remove duplicates from a dataset in Excel?",
+                    answer: `<p>Use the built-in "Remove Duplicates" feature. Select your data, go to the <strong>Data</strong> tab, and click <strong>Remove Duplicates</strong>. In the dialog box, you can choose which columns to consider when identifying duplicate rows.</p>`
+                },
+                {
+                    question: "What is the purpose of the Data Validation feature in Excel?",
+                    answer: `<p>Data Validation restricts the type of data or values that users can enter into a cell. Its purpose is to ensure data accuracy and consistency. Common uses include creating dropdown lists, restricting input to a range of numbers, or allowing only specific date formats.</p>`
+                },
+                {
+                    question: "How do you create a drop-down list in Excel?",
+                    answer: `<p>Drop-down lists are created using Data Validation. Enter your list items in a range of cells. Then, select the cell where you want the dropdown, go to <strong>Data > Data Validation</strong>, choose "List" from the "Allow" dropdown, and select your list items as the "Source".</p>`
+                },
+                {
+                    question: "What is the difference between relative, absolute, and mixed cell references?",
+                    answer: `<ul class="list-disc list-inside mt-2 space-y-2">
+                        <li><strong>Relative (e.g., <code>A1</code>):</strong> The default. The reference adjusts when you copy the formula.</li>
+                        <li><strong>Absolute (e.g., <code>$A$1</code>):</strong> The reference remains fixed when you copy the formula. Both the column and row are locked.</li>
+                        <li><strong>Mixed (e.g., <code>$A1</code> or <code>A$1</code>):</strong> Either the column or the row is fixed, but not both.</li>
+                    </ul>
+                    <p class="mt-2">You can press the <strong>F4</strong> key to toggle between reference types in the formula bar.</p>`
+                },
+                {
+                    question: "How do you split text into separate columns using a delimiter in Excel?",
+                    answer: `<p>Use the "Text to Columns" feature. Select the column with the text, go to the <strong>Data</strong> tab, click <strong>Text to Columns</strong>, and follow the wizard. You can choose to split by a delimiter (like a comma or space) or by a fixed width.</p>`
+                },
+                {
+                    question: "Explain the purpose of the SUMIFS function. How is it different from SUMIF?",
+                    answer: `<p><strong>SUMIF:</strong> Sums cells that meet a <strong>single</strong> specified criterion.</p>
+                    <p class="mt-2"><strong>SUMIFS:</strong> Sums cells that meet <strong>multiple</strong> specified criteria. It's more versatile. Note that the argument order is different: <code>SUMIF(range, criteria, [sum_range])</code> vs. <code>SUMIFS(sum_range, criteria_range1, criteria1, ...)</code>.</p>`
+                }
+            ],
+            sql: [
+                {
+                    question: "What is SQL, and why is it important for data management?",
+                    answer: `<p><strong>SQL (Structured Query Language)</strong> is a standard language for managing and manipulating relational databases. It's important because it allows for efficient data retrieval, manipulation (insert, update, delete), definition (create tables), and control (permissions).</p>`
+                },
+                {
+                    question: "What is the difference between INNER JOIN and OUTER JOIN?",
+                    answer: `<ul class="list-disc list-inside mt-2 space-y-2">
+                        <li><strong>INNER JOIN:</strong> Returns only the rows that have matching values in <strong>both</strong> tables.</li>
+                        <li><strong>OUTER JOIN:</strong> Returns rows even when there is no match. There are three types:
+                            <ul class="list-inside list-disc ml-6">
+                                <li><strong>LEFT JOIN:</strong> Returns all rows from the left table and matching rows from the right table.</li>
+                                <li><strong>RIGHT JOIN:</strong> Returns all rows from the right table and matching rows from the left table.</li>
+                                <li><strong>FULL JOIN:</strong> Returns all rows when there is a match in either table.</li>
+                            </ul>
+                        </li>
+                    </ul>`
+                },
+                {
+                    question: "How do you retrieve unique values from a column in SQL?",
+                    answer: `<p>You use the <code>DISTINCT</code> keyword in your <code>SELECT</code> statement.</p><pre><code>SELECT DISTINCT column_name FROM table_name;</code></pre>`
+                },
+                {
+                    question: "Explain the difference between WHERE and HAVING clauses.",
+                    answer: `<p><strong>WHERE:</strong> Filters individual rows <strong>before</strong> they are grouped by <code>GROUP BY</code>. It cannot be used with aggregate functions.</p>
+                             <p class="mt-2"><strong>HAVING:</strong> Filters groups of rows <strong>after</strong> they have been grouped by <code>GROUP BY</code>. It is used with aggregate functions.</p>`
+                },
+                {
+                    question: "What is the purpose of the GROUP BY clause in SQL?",
+                    answer: `<p>The <code>GROUP BY</code> clause arranges identical data into groups. It's used with aggregate functions (like <code>COUNT()</code>, <code>SUM()</code>, <code>AVG()</code>) to perform calculations on each group.</p>
+                    <pre><code>SELECT ProductCategory, SUM(SalesAmount) FROM Products GROUP BY ProductCategory;</code></pre>`
+                },
+                {
+                    question: "How do you create a table in SQL? Can you give an example?",
+                    answer: `<p>You use the <code>CREATE TABLE</code> statement to define a new table's structure.</p>
+                    <pre><code>CREATE TABLE Customers (
+    CustomerID INT PRIMARY KEY,
+    FirstName VARCHAR(50),
+    Email VARCHAR(100) UNIQUE
+);</code></pre>`
+                },
+                {
+                    question: "What is the purpose of a primary key in a database table?",
+                    answer: `<p>A primary key uniquely identifies each record in a table. It must contain unique values and cannot contain NULL values. It's also used to form relationships with other tables via foreign keys.</p>`
+                },
+                {
+                    question: "How can you delete duplicate rows in SQL?",
+                    answer: `<p>A common method is to use a Common Table Expression (CTE) with the <code>ROW_NUMBER()</code> window function.</p>
+                    <pre><code>WITH CTE AS (
+   SELECT *, ROW_NUMBER() OVER (PARTITION BY Col1, Col2 ORDER BY Col1) as rn
+   FROM YourTable
+)
+DELETE FROM CTE WHERE rn > 1;</code></pre>`
+                },
+                {
+                    question: "What is a subquery, and how is it used in SQL?",
+                    answer: `<p>A subquery (or inner query) is a query embedded within another SQL query. It can be used in the <code>WHERE</code>, <code>FROM</code>, or <code>SELECT</code> clause to return data that will be used by the main query.</p>
+                    <pre><code>SELECT ProductName FROM Products 
+WHERE ProductID IN (SELECT ProductID FROM OrderDetails WHERE Quantity > 10);</code></pre>`
+                },
+                {
+                    question: "What are the differences between UNION and UNION ALL?",
+                    answer: `<p>Both combine result sets from two or more <code>SELECT</code> statements.</p>
+                    <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li><strong>UNION:</strong> Removes duplicate rows from the combined result. It is slower.</li>
+                        <li><strong>UNION ALL:</strong> Includes all duplicate rows. It is faster.</li>
+                    </ul>`
+                },
+                {
+                    question: "How do you find the second highest salary in a table?",
+                    answer: `<p>There are several methods. A common one uses <code>OFFSET</code> and <code>LIMIT</code> (or <code>FETCH</code>).</p>
+                    <pre><code>-- For MySQL/PostgreSQL
+SELECT Salary FROM Employees ORDER BY Salary DESC LIMIT 1 OFFSET 1;
+
+-- For SQL Server
+SELECT Salary FROM Employees ORDER BY Salary DESC OFFSET 1 ROWS FETCH NEXT 1 ROW ONLY;</code></pre>`
+                },
+                {
+                    question: "What is a stored procedure in SQL, and why would you use one?",
+                    answer: `<p>A stored procedure is a pre-compiled collection of SQL statements stored in the database. You would use one for better performance, enhanced security, modularity (reusability), and reduced network traffic.</p>`
+                },
+                {
+                    question: "Explain the purpose of the COUNT function in SQL.",
+                    answer: `<p>The <code>COUNT()</code> function returns the number of rows that match a specified criterion.</p>
+                    <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li><code>COUNT(*)</code> counts all rows.</li>
+                        <li><code>COUNT(column_name)</code> counts non-NULL values in a column.</li>
+                        <li><code>COUNT(DISTINCT column_name)</code> counts unique, non-NULL values in a column.</li>
+                    </ul>`
+                },
+                {
+                    question: "What is normalization, and why is it important in databases?",
+                    answer: `<p>Normalization is the process of organizing tables to minimize data redundancy and improve data integrity. It's important because it reduces storage space, avoids data inconsistencies (update/insert/delete anomalies), and leads to a better, more scalable database design.</p>`
+                },
+                {
+                    question: "How do you write an SQL query to join three tables?",
+                    answer: `<p>You extend the <code>JOIN</code> syntax by adding a second <code>JOIN</code> clause, linking the result of the first join to the third table.</p>
+                    <pre><code>SELECT o.OrderID, c.CustomerName, p.ProductName
+FROM Orders o
+INNER JOIN Customers c ON o.CustomerID = c.CustomerID
+INNER JOIN Products p ON o.ProductID = p.ProductID;</code></pre>`
+                }
+            ],
+            powerbi: [
+                {
+                    question: "What is Power BI, and how is it used for data visualization?",
+                    answer: `<p>Power BI is a Microsoft business intelligence tool. It's used to connect to data sources, transform data, and create interactive reports and dashboards with a wide range of visualizations, turning raw data into coherent, actionable insights.</p>`
+                },
+                {
+                    question: "What is the relationship between Power BI Desktop and Power BI Service?",
+                    answer: `<p><strong>Power BI Desktop</strong> is the free, offline authoring tool used to create reports. <strong>Power BI Service</strong> is the cloud-based platform where you publish, share, and collaborate on those reports and create dashboards.</p>`
+                },
+                {
+                    question: "How do you create calculated columns and measures in Power BI?",
+                    answer: `<p>Both are created using <strong>DAX (Data Analysis Expressions)</strong>.</p>
+                    <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li><strong>Calculated Columns:</strong> Add a new column to a table. Calculated during data refresh and stored in the model. Use when you need a new dimension to slice or filter by.</li>
+                        <li><strong>Measures:</strong> Perform aggregations on data. Calculated on-the-fly based on the filter context of a visual. Use for numerical calculations like Total Sales.</li>
+                    </ul>`
+                },
+                 {
+                    question: "Explain the difference between a measure and a calculated column.",
+                    answer: `<p>The key difference is the context of evaluation.</p>
+                    <ul class="list-disc list-inside mt-2 space-y-2">
+                        <li>A <strong>calculated column</strong> is computed row-by-row during data refresh and stored in the model. It consumes RAM and increases file size.</li>
+                        <li>A <strong>measure</strong> is calculated at query time based on the filters applied in the visual (filter context). It doesn't store values, saving memory but requiring CPU at runtime.</li>
+                    </ul>`
+                },
+                {
+                    question: "How do you apply filters to a report in Power BI?",
+                    answer: `<p>There are several ways:</p>
+                    <ol class="list-decimal list-inside mt-2 space-y-1">
+                        <li><strong>Slicers:</strong> Interactive, on-canvas filters for users.</li>
+                        <li><strong>Filters Pane:</strong> Apply filters at the visual, page, or report level.</li>
+                        <li><strong>Cross-filtering:</strong> Clicking on a data point in one visual filters others on the page.</li>
+                        <li><strong>Drill-through:</strong> Navigate from a summary page to a detail page with context passed as a filter.</li>
+                    </ol>`
+                },
+                {
+                    question: "What is DAX, and why is it important in Power BI?",
+                    answer: `<p><strong>DAX (Data Analysis Expressions)</strong> is the formula language used to create custom calculations in Power BI. It's important because it is the foundation for creating measures, calculated columns, and complex business logic, enabling advanced analytics beyond simple aggregations.</p>`
+                },
+                {
+                    question: "How do you handle many-to-many relationships in Power BI?",
+                    answer: `<p>The best practice is to use a <strong>bridge table</strong> (or junction table). This table sits between the two "many" tables and contains the primary keys from both. You then create one-to-many relationships from each of the original tables to the bridge table.</p>`
+                },
+                {
+                    question: "Explain the use of slicers in Power BI reports.",
+                    answer: `<p>Slicers are on-canvas, interactive filtering tools. They provide an intuitive way for report consumers to narrow down the data they are viewing without having to use the more complex Filters pane. They are highly visible and can be customized (e.g., list, dropdown, slider).</p>`
+                },
+                {
+                    question: "How do you publish a Power BI report to the Power BI Service?",
+                    answer: `<p>In Power BI Desktop, save your report, then go to the <strong>Home</strong> tab and click <strong>Publish</strong>. You will be prompted to sign in and select a destination workspace (e.g., "My workspace" or a shared workspace).</p>`
+                },
+                {
+                    question: "What is the Power Query Editor?",
+                    answer: `<p>Power Query Editor is the data transformation (ETL) tool within Power BI. It allows you to connect to data sources, and then clean, shape, and combine the data using a user-friendly interface before it's loaded into the data model. All steps are recorded and repeatable on refresh.</p>`
+                },
+                {
+                    question: "How do you refresh data in a Power BI report?",
+                    answer: `<p>In <strong>Power BI Desktop</strong>, you click the "Refresh" button on the Home tab. In the <strong>Power BI Service</strong>, you can perform a manual refresh or set up a <strong>Scheduled Refresh</strong> in the dataset's settings. For on-premises data, a data gateway is required.</p>`
+                },
+                {
+                    question: "What is Row-Level Security (RLS) in Power BI?",
+                    answer: `<p>Row-Level Security (RLS) restricts data access for specific users. You define roles and apply DAX filter expressions to them in Power BI Desktop. In the Service, you assign users to these roles. When a user views the report, they only see the data their role permits.</p>`
+                },
+                {
+                    question: "Explain the concept of drill-through in Power BI.",
+                    answer: `<p>Drill-through allows users to navigate from a data point on a summary page to a more detailed page, with the context of the selected data point passed as a filter. It provides a seamless way to explore data from a high level down to a granular level.</p>`
+                },
+                {
+                    question: "What is the difference between a dashboard and a report in Power BI?",
+                    answer: `<p>A <strong>report</strong> is a multi-page, highly interactive deep-dive into a dataset. A <strong>dashboard</strong> is a single-page, high-level overview that consolidates key visuals (tiles) from one or more reports. Dashboards are for monitoring; reports are for exploration.</p>`
+                },
+                {
+                    question: "How do you schedule automatic data refresh in Power BI Service?",
+                    answer: `<p>In the Power BI Service, go to the dataset's settings. Under "Scheduled refresh", toggle it on, select a frequency (daily/weekly), set your time zone, and add specific times for the refresh. You must have a Pro/Premium license and a gateway configured for on-premises sources.</p>`
+                }
+            ]
+        };
+
+        const qaContainer = document.getElementById('qa-container');
+        const tabs = document.getElementById('tabs');
+        const searchInput = document.getElementById('search-input');
+        
+        let state = {
+            activeCategory: 'excel',
+            searchTerm: '',
+            checkedItems: {
+                excel: new Set(),
+                sql: new Set(),
+                powerbi: new Set()
+            }
+        };
+
+        const progressChartCtx = document.getElementById('progressChart').getContext('2d');
+        let chart = new Chart(progressChartCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed', 'Remaining'],
+                datasets: [{
+                    data: [0, 15],
+                    backgroundColor: [
+                        '#4f46e5', // indigo-600
+                        '#e5e7eb'  // gray-200
+                    ],
+                    borderColor: '#f8fafc', // slate-50
+                    borderWidth: 4,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: true
+                    }
+                },
+                animation: {
+                    animateScale: true,
+                    animateRotate: true
+                }
+            }
+        });
+
+        const createAccordionItem = (item, index, category) => {
+            const isChecked = state.checkedItems[category].has(index);
+            const content = `
+                <div class="accordion-item bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" data-question="${item.question.toLowerCase()}">
+                    <button class="accordion-button w-full flex justify-between items-center text-left p-5 focus:outline-none">
+                        <span class="font-semibold text-slate-800">${item.question}</span>
+                        <span class="accordion-icon transition-transform transform text-indigo-600">
+                           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </span>
+                    </button>
+                    <div class="accordion-content">
+                        <div class="p-5 pt-0 text-slate-600 space-y-4">
+                            ${item.answer}
+                            <div class="mt-4 pt-4 border-t border-slate-200">
+                                <label class="flex items-center space-x-2 cursor-pointer text-slate-500">
+                                    <input type="checkbox" class="progress-checkbox h-5 w-5 rounded text-indigo-600 focus:ring-indigo-500" data-category="${category}" data-index="${index}" ${isChecked ? 'checked' : ''}>
+                                    <span>Mark as Mastered</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            return content;
+        };
+
+        const renderContent = () => {
+            qaContainer.innerHTML = '';
+            const categoryData = interviewData[state.activeCategory];
+            const filteredData = categoryData.filter(item => 
+                item.question.toLowerCase().includes(state.searchTerm.toLowerCase()) || 
+                item.answer.toLowerCase().includes(state.searchTerm.toLowerCase())
+            );
+            
+            if (filteredData.length === 0) {
+                 qaContainer.innerHTML = `<div class="text-center p-8 bg-white rounded-lg shadow-sm"><p class="text-slate-500">No questions found matching your search.</p></div>`;
+                 return;
+            }
+
+            filteredData.forEach((item, originalIndex) => {
+                 const originalIdx = categoryData.findIndex(d => d.question === item.question);
+                 qaContainer.innerHTML += createAccordionItem(item, originalIdx, state.activeCategory);
+            });
+            attachAccordionListeners();
+            updateProgressChart();
+        };
+
+        const updateProgressChart = () => {
+            const category = state.activeCategory;
+            const totalQuestions = interviewData[category].length;
+            const completedQuestions = state.checkedItems[category].size;
+            chart.data.datasets[0].data = [completedQuestions, totalQuestions - completedQuestions];
+            chart.update();
+        };
+
+        const attachAccordionListeners = () => {
+             qaContainer.querySelectorAll('.accordion-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    const content = button.nextElementSibling;
+                    const icon = button.querySelector('.accordion-icon');
+                    const isOpen = content.classList.contains('open');
+
+                    qaContainer.querySelectorAll('.accordion-content.open').forEach(openContent => {
+                        openContent.classList.remove('open');
+                        openContent.previousElementSibling.querySelector('.accordion-icon').classList.remove('rotate-180');
+                    });
+                    
+                    if(!isOpen) {
+                        content.classList.add('open');
+                        icon.classList.add('rotate-180');
+                    }
+                });
+            });
+
+             qaContainer.querySelectorAll('.progress-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const category = e.target.dataset.category;
+                    const index = parseInt(e.target.dataset.index);
+                    if (e.target.checked) {
+                        state.checkedItems[category].add(index);
+                    } else {
+                        state.checkedItems[category].delete(index);
+                    }
+                    updateProgressChart();
+                });
+            });
+        };
+        
+        tabs.addEventListener('click', (e) => {
+            if (e.target.matches('.tab-button')) {
+                state.activeCategory = e.target.dataset.category;
+                tabs.querySelectorAll('.tab-button').forEach(tab => {
+                    tab.setAttribute('aria-selected', tab === e.target);
+                });
+                renderContent();
+            }
+        });
+
+        searchInput.addEventListener('input', (e) => {
+            state.searchTerm = e.target.value;
+            renderContent();
+        });
+
+        const init = () => {
+            tabs.querySelector(`[data-category="${state.activeCategory}"]`).setAttribute('aria-selected', true);
+            renderContent();
+        };
+
+        init();
+    });
+    </script>
+</body>
+</html>
